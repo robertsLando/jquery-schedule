@@ -299,6 +299,8 @@
      */
     add: function (parent, position, height, options) {
 
+      var $this = this;
+
       if (height <= 0 || position >= this.maxBlocks) {
         console.error('Invalid period');
 
@@ -345,8 +347,6 @@
 
       // period events
       if (this.settings.mode === 'edit') {
-        var $this = this;
-
         period.draggable({
           grid: [0, this.blockHeight],
           containment: 'parent',
@@ -364,6 +364,9 @@
           grid: [0, this.blockHeight],
           containment: 'parent',
           handles: 'n, s',
+          start(event, ui) {
+            $this.resizing = true
+          },
           resize: function (event, ui) {
             $('.jqs-period-time', ui.helper).text($this.periodResize(ui));
 
@@ -379,11 +382,17 @@
                 'top': Math.round(ui.originalPosition.top)
               });
             }
+
+            setTimeout(function () {
+              $this.resizing = false
+            }, 300)
           }
         });
 
         if (this.settings.periodOptions) {
           period.click(function (event) {
+            if ($this.resizing) return
+
             if (
               !$(event.target).hasClass('jqs-period-remove') ||
               !$(event.target).hasClass('jqs-period-duplicate')
