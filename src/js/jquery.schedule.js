@@ -1,6 +1,6 @@
 /**
  * jQuery Schedule v2.2.0
- * https://github.com/Yehzuna/jquery-schedule
+ * https://github.com/robertsLando/jquery-schedule#readme
  * Thomas BORUSZEWSKI <yehzuna@outlook.com>
  */
 ; (function ($, window, document, undefined) {
@@ -16,6 +16,7 @@
     periodOptions: true,
     periodColors: [],
     periodTitle: '',
+    numberInput: false,
     periodBackgroundColor: 'rgba(82, 155, 255, 0.5)',
     periodBorderColor: '#2a3cff',
     periodTextColor: '#000',
@@ -482,10 +483,8 @@
       var time = '<div class="jqs-options-time">' + this.periodInit(position, position + height) + '</div>';
 
       // title
-      var title = $('jqs-period-title', period).text();
       var titleInput = '<div class="jqs-options-title-container">' +
-        '<input type="number" placeholder="' + this.settings.periodTitlePlaceholder +
-        '" value="' + title + '" class="jqs-options-title"></div>';
+        '<input type="'+ (this.settings.numberInput ? 'number' : 'text') +'" placeholder="' + this.settings.periodTitlePlaceholder + '" class="jqs-options-title"></div>';
 
       // color
       var colorInput = '';
@@ -521,7 +520,7 @@
       $('.jqs-options-title', this.element).keyup(function () {
         $('.jqs-period-title', period).text($(this).val());
         period.attr('title', $(this).val());
-      });
+      }).val(period.attr('title'));
 
       $('.jqs-options-remove', this.element).click(function () {
         $this.remove(period);
