@@ -1,37 +1,42 @@
-;(function ($, window, document, undefined) {
+/**
+ * jQuery Schedule v2.2.0
+ * https://github.com/Yehzuna/jquery-schedule
+ * Thomas BORUSZEWSKI <yehzuna@outlook.com>
+ */
+; (function ($, window, document, undefined) {
   'use strict';
 
   // Defaults options
   var defaults = {
-      mode: 'edit', // read
-      hour: 24, // 12
-      days: 7, // 7/5
-      periodDuration: 30, // 15/30/60
-      data: [],
-      periodOptions: true,
-      periodColors: [],
-      periodTitle: '',
-      periodBackgroundColor: 'rgba(82, 155, 255, 0.5)',
-      periodBorderColor: '#2a3cff',
-      periodTextColor: '#000',
-      periodRemoveButton: 'Remove',
-      periodDuplicateButton: 'Duplicate',
-      periodTitlePlaceholder: 'Title',
-      daysList: [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday'
-      ],
-      onInit: function () {},
-      onAddPeriod: function () {},
-      onRemovePeriod: function () {},
-      onDuplicatePeriod: function () {},
-      onClickPeriod: function () {}
-    },
+    mode: 'edit', // read
+    hour: 24, // 12
+    days: 7, // 7/5
+    periodDuration: 30, // 15/30/60
+    data: [],
+    periodOptions: true,
+    periodColors: [],
+    periodTitle: '',
+    periodBackgroundColor: 'rgba(82, 155, 255, 0.5)',
+    periodBorderColor: '#2a3cff',
+    periodTextColor: '#000',
+    periodRemoveButton: 'Remove',
+    periodDuplicateButton: 'Duplicate',
+    periodTitlePlaceholder: 'Title',
+    daysList: [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ],
+    onInit: function () { },
+    onAddPeriod: function () { },
+    onRemovePeriod: function () { },
+    onDuplicatePeriod: function () { },
+    onClickPeriod: function () { }
+  },
     pluginName = 'jqs';
 
   // Plugin constructor
@@ -61,17 +66,17 @@
     /**
      * Period interval multiplier
      */
-    periodInterval: 0,
+    blocksEachHour: 0,
 
     /**
      * Period max height
      */
-    periodHeight: 0,
+    maxBlocks: 0,
 
     /**
      * Period position max step
      */
-    periodPosition: 0,
+    blockHeight: 0,
 
     /**
      * Generate id for a period
@@ -103,9 +108,9 @@
         throw new Error('Invalid periodDuration');
       }
 
-      this.periodInterval = 60 / this.settings.periodDuration;
-      this.periodHeight = 24 * this.periodInterval;
-      this.periodPosition = 40 / this.periodInterval;
+      this.blocksEachHour = 60 / this.settings.periodDuration; // How many blocks there are in an hour
+      this.maxBlocks = 24 * this.blocksEachHour; // Period height in blocks
+      this.blockHeight = 40 / this.blocksEachHour; // Pixel height of each block
 
       $(this.element).addClass('jqs').addClass('jqs-mode-' + this.settings.mode)
         .addClass('jqs').addClass('jqs-mode-' + this.settings.days);
@@ -116,8 +121,12 @@
         var helper = false;
 
         $(this.element).on('mousedown', '.jqs-day', function (event) {
+          if ($this.dragging) return
+
+          $this.dragging = true
+
           var offset = event.pageY - $(this).offset().top;
-          position = Math.floor(offset / $this.periodPosition);
+          position = Math.floor(offset / $this.blockHeight);
 
           if (!$(event.target).hasClass('jqs-period') && $(event.target).parents('.jqs-period').length === 0) {
             var time = '';
@@ -126,8 +135,8 @@
             }
 
             helper = $('<div>').addClass('jqs-period-helper').css({
-              'height': $this.periodPosition,
-              'top': position * $this.periodPosition
+              'height': $this.blockHeight,
+              'top': position * $this.blockHeight
             }).append('<div class="jqs-period-helper-time">' + time + '</div>');
 
             $(this).append(helper);
@@ -137,13 +146,13 @@
         $(this.element).on('mousemove', '.jqs-day', function (event) {
           if (helper) {
             var offset = event.pageY - $(this).offset().top;
-            var height = Math.round(offset / $this.periodPosition) - position;
+            var height = Math.round(offset / $this.blockHeight) - position;
             if (height <= 0) {
               height = 1;
             }
 
             helper.css({
-              'height': height * $this.periodPosition
+              'height': height * $this.blockHeight
             });
 
             if (height >= 1) {
@@ -157,7 +166,7 @@
         $(this.element).on('mouseup', '.jqs-day', function (event) {
           if (!$(event.target).hasClass('jqs-period') && $(event.target).parents('.jqs-period').length === 0) {
             var offset = event.pageY - $(this).offset().top;
-            var height = Math.round(offset / $this.periodPosition) - position;
+            var height = Math.round(offset / $this.blockHeight) - position;
             if (height <= 0) {
               height = 1;
             }
@@ -170,6 +179,10 @@
             helper.remove();
             helper = false;
           }
+
+          setTimeout(function () {
+            $this.dragging = false
+          }, 300)
         });
 
         $(this.element).on('mouseenter', '.jqs-day', function () {
@@ -267,7 +280,7 @@
             }
 
             if (height === 0) {
-              height = $this.periodHeight;
+              height = $this.maxBlocks;
             }
 
             $this.add(parent, position, height - position, options);
@@ -285,7 +298,7 @@
      */
     add: function (parent, position, height, options) {
 
-      if (height <= 0 || position >= this.periodHeight) {
+      if (height <= 0 || position >= this.maxBlocks) {
         console.error('Invalid period');
 
         return false;
@@ -307,9 +320,9 @@
       var period = $('<div class="jqs-period">' +
         '<div class="jqs-period-container">' + periodTime + periodTitle + periodRemove + periodDuplicate + '</div>' +
         '</div>').css({
-        'top': position * this.periodPosition,
-        'height': height * this.periodPosition
-      }).attr('id', this.uniqId()).attr('title', options.title).appendTo(parent);
+          'top': position * this.blockHeight,
+          'height': height * this.blockHeight
+        }).attr('id', this.uniqId()).attr('title', options.title).appendTo(parent);
 
       $('.jqs-period-container', period).css({
         'background-color': options.backgroundColor,
@@ -334,7 +347,7 @@
         var $this = this;
 
         period.draggable({
-          grid: [0, this.periodPosition],
+          grid: [0, this.blockHeight],
           containment: 'parent',
           drag: function (event, ui) {
             $('.jqs-period-time', ui.helper).text($this.periodDrag(ui));
@@ -343,12 +356,11 @@
           stop: function (event, ui) {
             if (!$this.isValid($(ui.helper))) {
               console.error('Invalid position');
-
               $(ui.helper).css('top', Math.round(ui.originalPosition.top));
             }
           }
         }).resizable({
-          grid: [0, this.periodPosition],
+          grid: [0, this.blockHeight],
           containment: 'parent',
           handles: 'n, s',
           resize: function (event, ui) {
@@ -416,8 +428,8 @@
     duplicate: function (period) {
       if (!this.settings.onDuplicatePeriod.call(this, period, this.element)) {
         var options = this.periodData(period);
-        var position = Math.round(period.position().top / this.periodPosition);
-        var height = Math.round(period.height() / this.periodPosition);
+        var position = Math.round(period.position().top / this.blockHeight);
+        var height = Math.round(period.height() / this.blockHeight);
 
         var $this = this;
         $('.jqs-day', this.element).each(function (index, parent) {
@@ -465,14 +477,14 @@
       }
 
       // time
-      var position = Math.round(period.position().top / this.periodPosition);
-      var height = Math.round(period.height() / this.periodPosition);
+      var position = Math.round(period.position().top / this.blockHeight);
+      var height = Math.round(period.height() / this.blockHeight);
       var time = '<div class="jqs-options-time">' + this.periodInit(position, position + height) + '</div>';
 
       // title
       var title = $('jqs-period-title', period).text();
       var titleInput = '<div class="jqs-options-title-container">' +
-        '<input type="text" placeholder="' + this.settings.periodTitlePlaceholder +
+        '<input type="number" placeholder="' + this.settings.periodTitlePlaceholder +
         '" value="' + title + '" class="jqs-options-title"></div>';
 
       // color
@@ -547,8 +559,8 @@
      * @returns {string}
      */
     periodDrag: function (ui) {
-      var start = Math.round(ui.position.top / this.periodPosition);
-      var end = Math.round(($(ui.helper).height() + ui.position.top) / this.periodPosition);
+      var start = Math.round(ui.position.top / this.blockHeight);
+      var end = Math.round(($(ui.helper).height() + ui.position.top) / this.blockHeight);
 
       return this.periodFormat(start) + ' - ' + this.periodFormat(end);
     },
@@ -559,8 +571,8 @@
      * @returns {string}
      */
     periodResize: function (ui) {
-      var start = Math.round(ui.position.top / this.periodPosition);
-      var end = Math.round((ui.size.height + ui.position.top) / this.periodPosition);
+      var start = Math.round(ui.position.top / this.blockHeight);
+      var end = Math.round((ui.size.height + ui.position.top) / this.blockHeight);
 
       return this.periodFormat(start) + ' - ' + this.periodFormat(end);
     },
@@ -593,8 +605,8 @@
      * @returns {[*,*]}
      */
     periodData: function (period) {
-      var start = Math.round(period.position().top / this.periodPosition);
-      var end = Math.round((period.height() + period.position().top) / this.periodPosition);
+      var start = Math.round(period.position().top / this.blockHeight);
+      var end = Math.round((period.height() + period.position().top) / this.blockHeight);
 
       return {
         start: this.periodFormat(start),
@@ -612,7 +624,7 @@
      * @returns {number}
      */
     periodFormat: function (position) {
-      if (position >= this.periodHeight) {
+      if (position >= this.maxBlocks) {
         position = 0;
       }
 
@@ -620,8 +632,8 @@
         position = 0;
       }
 
-      var hour = Math.floor(position / this.periodInterval);
-      var mn = (position / this.periodInterval - hour) * 60;
+      var hour = Math.floor(position / this.blocksEachHour);
+      var mn = (position / this.blocksEachHour - hour) * 60;
 
       if (this.settings.hour === 12) {
         var time = hour;
@@ -690,8 +702,8 @@
       }
 
       var position = 0;
-      position += hour * this.periodInterval;
-      position += mn / 60 * this.periodInterval;
+      position += hour * this.blocksEachHour;
+      position += mn / 60 * this.blocksEachHour;
 
       if (Math.floor(position) !== position) {
         return -1;
@@ -743,7 +755,7 @@
      */
     isValid: function (current) {
       var currentStart = Math.round(current.position().top);
-      var currentEnd = Math.round(current.position().top + current.height());
+      var currentEnd = Math.round(currentStart + current.height());
 
       var start = 0;
       var end = 0;
@@ -821,7 +833,7 @@
           }
 
           if (height === 0) {
-            height = $this.periodHeight;
+            height = $this.maxBlocks;
           }
 
           var status = true;
